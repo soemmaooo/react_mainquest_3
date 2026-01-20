@@ -15,27 +15,35 @@ function App() {
   const initialProductState = {
     title: '',
     category: '',
-    origin_price: 0,
-    price: 0,
+    origin_price: '',
+    price: '',
     unit: '',
     description: '',
     content: '',
     is_enabled: 0,
-    imageUrl: '請輸入網址後點選預覽圖片',
+    imageUrl: ' ',
   };
   const [newProductData, setNewProductData] = useState(initialProductState);
   const [modalMode, setModalMode] = useState('');
-  const [preImageUrl, setPreImageUrl] = useState('請輸入網址後點選預覽圖片');
+  const [preImageUrl, setPreImageUrl] = useState(' ');
 
   useEffect(() => {
     const token = document.cookie.replace(
       /(?:(?:^|.*;\s*)hexToken\s*=\s*([^;]*).*$)|^.*$/,
-      '$1'
+      '$1',
     );
     axios.defaults.headers.common.Authorization = token;
     productModalRef.current = new bootstrap.Modal('#productModal', {
       keyboard: false,
     });
+    document
+      .querySelector('#productModal')
+      .addEventListener('hide.bs.modal', () => {
+        setPreImageUrl(null);
+        if (document.activeElement instanceof HTMLElement) {
+          document.activeElement.blur();
+        }
+      });
     checkAdmin();
   }, []);
 
@@ -72,7 +80,7 @@ function App() {
     try {
       const response = await axios.post(
         `${VITE_APP_API_BASE}/admin/signin`,
-        formData
+        formData,
       );
       const { token, expired } = response.data;
       document.cookie = `hexToken=${token};expires=${new Date(expired)};`;
@@ -87,9 +95,10 @@ function App() {
   const getProduct = async () => {
     try {
       const res = await axios.get(
-        `${VITE_APP_API_BASE}/api/${VITE_APP_API_PATH}/admin/products/all`
+        `${VITE_APP_API_BASE}/api/${VITE_APP_API_PATH}/admin/products`,
       );
-      setProductData(Object.values(res.data.products));
+      console.log(res.data.products);
+      setProductData(res.data.products);
     } catch (error) {
       alert('取得失敗: ' + error.response.data.message);
     }
@@ -122,19 +131,21 @@ function App() {
 
       getProduct();
     } catch (error) {
-      alert('新增失敗: ' + error.response.data.message);
+      modalMode === 'add'
+        ? alert('新增失敗: ' + error.response.data.message)
+        : alert('修改失敗: ' + error.response.data.message);
     }
   };
 
   const deleteProduct = async (id) => {
     try {
       await axios.delete(
-        `${VITE_APP_API_BASE}/api/${VITE_APP_API_PATH}/admin/product/${id}`
+        `${VITE_APP_API_BASE}/api/${VITE_APP_API_PATH}/admin/product/${id}`,
       );
       alert('刪除成功');
       getProduct();
     } catch (error) {
-      alert('新增失敗: ' + error.response.data.message);
+      alert('刪除失敗: ' + error.response.data.message);
     }
   };
 
@@ -293,7 +304,7 @@ function App() {
                       </label>
                       <input
                         id="imageUrl"
-                        type="text"
+                        type="url"
                         className="form-control rounded-pill"
                         placeholder="請輸入圖片連結"
                         value={newProductData.imageUrl}
@@ -308,17 +319,14 @@ function App() {
                     >
                       預覽圖片
                     </button>
-                    <button
-                      className="btn btn-outline-secondary btn-main border-white rounded-pill w-100"
-                      onClick={() => setPreImageUrl(null)}
-                    >
-                      刪除圖片
-                    </button>
                   </div>
                   {modalMode === 'add' ? (
                     <img src={preImageUrl} alt="" />
                   ) : (
-                    <img src={newProductData.imageUrl} alt="" />
+                    <img
+                      src={newProductData.imageUrl}
+                      alt={newProductData.title}
+                    />
                   )}
                 </div>
                 <div className="col-sm-8">
@@ -427,7 +435,7 @@ function App() {
                         id="is_enabled"
                         className="form-check-input"
                         type="checkbox"
-                        checked={!!newProductData.is_enabled}
+                        checked={newProductData.is_enabled}
                         onChange={(e) => handleInputChange(e, 'product')}
                       />
                       <label className="form-check-label" htmlFor="is_enabled">
@@ -443,7 +451,6 @@ function App() {
                 type="button"
                 className="btn btn-outline-secondary btn-main rounded-pill"
                 data-bs-dismiss="modal"
-                onClick={() => setPreImageUrl(null)}
               >
                 取消
               </button>
